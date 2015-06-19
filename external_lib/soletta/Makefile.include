@@ -1,0 +1,1 @@
+CFLAGS += -I$(EXT_LIBS_MODDIR)/soletta/soletta/install/usr/include/soletta/
