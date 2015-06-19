@@ -117,6 +117,20 @@ $(OBJECTDIR):
 
 uniq = $(if $1,$(firstword $1) $(call uniq,$(filter-out $(firstword $1),$1)))
 
+### Include external library makefiles
+
+EXT_LIBS_MODDIR  = $(CONTIKI)/external_lib
+EXT_LIBS_objs    = $(foreach ext_lib, $(USE_EXT_LIBS), $(subst $(ext_lib), $(ext_lib)/$(ext_lib).a, $(ext_lib)))
+EXT_LIBS         = $(addprefix $(EXT_LIBS_MODDIR)/,$(EXT_LIBS_objs))
+
+define make-ext-lib
+$(1):
+	$(MAKE) -C $(dir $(1))
+endef
+$(foreach ext_lib,$(EXT_LIBS),$(eval $(call make-ext-lib,$(ext_lib))))
+
+$(foreach ext_lib,$(EXT_LIBS),$(eval include $(dir $(ext_lib))/Makefile.include))
+
 ### Include application makefiles
 
 ifdef APPS
@@ -222,6 +236,7 @@ clean:
 	*.ce *.co
 	rm -rf $(CLEAN)
 	-rm -rf $(OBJECTDIR)
+	-@for i in $(USE_EXT_LIBS) ; do "$(MAKE)" -C $(EXT_LIBS_MODDIR)/$$i distclean ; done
 
 distclean: clean
 	-rm -f ${addsuffix .$(TARGET),$(CONTIKI_PROJECT)}
@@ -276,7 +291,7 @@ ifndef LD
 endif
 
 ifndef CUSTOM_RULE_LINK
-%.$(TARGET): %.co $(PROJECT_OBJECTFILES) $(PROJECT_LIBRARIES) contiki-$(TARGET).a
+%.$(TARGET): %.co $(PROJECT_OBJECTFILES) $(PROJECT_LIBRARIES) $(EXT_LIBS) contiki-$(TARGET).a
 	$(TRACE_LD)
 	$(Q)$(LD) $(LDFLAGS) $(TARGET_STARTFILES) ${filter-out %.a,$^} \
 	    ${filter %.a,$^} $(TARGET_LIBFILES) -o $@
@@ -302,3 +317,10 @@ endif
 # command in order to be a rule, not just a prerequisite.
 %: %.$(TARGET)
 	@
+
+export CC
+export LD
+export AS
+export CFLAGS
+export LDFLAGS
+export ASFLAGS
